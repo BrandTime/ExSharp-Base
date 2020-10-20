@@ -12,16 +12,56 @@ namespace ExSharpBase.Modules
 {
     class Memory
     {
+        [DllImport("DriverCommunicationLibrary.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern IntPtr GetTargetPid();
+
+        [DllImport("DriverCommunicationLibrary.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern UInt64 ReadVirtualMemory(IntPtr ProcessId, IntPtr ReadAddress, IntPtr Size);
+
+        [DllImport("DriverCommunicationLibrary.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool WriteVirtualMemory(IntPtr ProcessId, IntPtr WriteAddress, IntPtr WriteValue, IntPtr WriteSize);
+
+        [DllImport("DriverCommunicationLibrary.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern IntPtr GetClientModule();
+
+        private static IntPtr pid = (IntPtr)0;
+
         public static T Read<T>(int Address)
         {
             var Size = Marshal.SizeOf<T>();
-            var Buffer = new byte[Size];
-            bool Result = NativeImport.ReadProcessMemory(Process.GetProcessesByName("League of Legends").FirstOrDefault().Handle, (IntPtr)Address, Buffer, Size, out var lpRead);
+            if (Size > sizeof(UInt64))
+                return default(T);
+            if (pid.ToInt64() == 0) pid  = GetTargetPid();
+
+            var BufferPtr = ReadVirtualMemory(pid, (IntPtr)Address, (IntPtr)Size);
+            var Buffer = BitConverter.GetBytes(BufferPtr).ToArray();
+
             var Ptr = Marshal.AllocHGlobal(Size);
             Marshal.Copy(Buffer, 0, Ptr, Size);
             var Struct = Marshal.PtrToStructure<T>(Ptr);
             Marshal.FreeHGlobal(Ptr);
             return Struct;
+        }
+
+        public static bool Write<T>(int Address, T Value)
+        {
+            var Size = Marshal.SizeOf<T>();
+            if (Size > sizeof(UInt64))
+                throw new Exception("CANT WRITE MORE THAN UINT64");
+            if (pid.ToInt64() == 0) pid = GetTargetPid();
+
+            var Ptr = Marshal.AllocHGlobal(Size);
+            Marshal.StructureToPtr<T>(Value, Ptr, false);
+
+            byte[] Buffer = new byte[sizeof(UInt64)];
+            Marshal.Copy(Ptr, Buffer, 0, Size);
+            var FinalValue = BitConverter.ToUInt64(Buffer, 0);
+
+            bool Success = WriteVirtualMemory(pid, (IntPtr)Address, (IntPtr)FinalValue, (IntPtr)Size);
+
+            Marshal.FreeHGlobal(Ptr);
+
+            return Success;
         }
 
         public static string ReadString(int address, Encoding Encoding)
@@ -44,15 +84,26 @@ namespace ExSharpBase.Modules
             Matrix tmp = Matrix.Zero;
 
             byte[] Buffer = new byte[64];
-            IntPtr ByteRead;
+            //IntPtr ByteRead;
 
-            NativeImport.ReadProcessMemory(Process.GetProcessesByName("League of Legends").FirstOrDefault().Handle, (IntPtr)address, Buffer, 64, out ByteRead);
+            //NativeImport.ReadProcessMemory(Process.GetProcessesByName("League of Legends").FirstOrDefault().Handle, (IntPtr)address, Buffer, 64, out ByteRead);
 
-            if (ByteRead == IntPtr.Zero)
+            if (pid.ToInt64() == 0) pid = GetTargetPid();
+            for (int i = 0; i < 64; i += 4)
+            {
+                var BufferPtr = ReadVirtualMemory(pid, (IntPtr)address + i, (IntPtr)4);
+                var buf = BitConverter.GetBytes(BufferPtr);
+                for (int j = 0; j < 4; j++)
+                {
+                    Buffer[i + j] = buf[j];
+                }
+            }
+
+            /*if (ByteRead == IntPtr.Zero)
             {
                 //Console.WriteLine($"[ReadMatrix] No bytes has been read at 0x{address.ToString("X")}");
                 return new Matrix();
-            }
+            }*/
 
             tmp.M11 = BitConverter.ToSingle(Buffer, (0 * 4));
             tmp.M12 = BitConverter.ToSingle(Buffer, (1 * 4));

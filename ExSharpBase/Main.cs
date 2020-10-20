@@ -16,9 +16,11 @@ namespace ExSharpBase
     {
         public static void OnMain()
         {
-            if (Utils.IsKeyPressed(Keys.Space) && Utils.IsGameOnDisplay())
+            if (Utils.IsKeyPressed(Keys.X))
             {
-                OrbService.Orbwalker.Orbwalk();
+                //OrbService.Orbwalker.Orbwalk();
+                //int objectUnderMouse = Engine.GetObjectUnderMouse();
+                //MessageBox.Show(objectUnderMouse.ToString());
 
                 /*Point EnemyPosition = ObjectManager.GetEnemyPosition();
 
@@ -39,6 +41,20 @@ namespace ExSharpBase
                 {
                     Engine.IssueOrder(Enums.GameObjectOrder.MoveTo, Cursor.Position);
                 }*/
+            }
+
+            if (Utils.IsKeyPressed(Keys.PageUp))
+            {
+                var zoomInstance = Memory.Read<int>(OffsetManager.Instances.ZoomInstance);
+                var zoomAmount = Memory.Read<float>(zoomInstance + OffsetManager.Instances.ZoomAmount);
+                Memory.Write<float>(zoomInstance + OffsetManager.Instances.ZoomAmount, zoomAmount + 1.0f);
+            }
+
+            if (Utils.IsKeyPressed(Keys.PageDown))
+            {
+                var zoomInstance = Memory.Read<int>(OffsetManager.Instances.ZoomInstance);
+                var zoomAmount = Memory.Read<float>(zoomInstance + OffsetManager.Instances.ZoomAmount);
+                Memory.Write<float>(zoomInstance + OffsetManager.Instances.ZoomAmount, zoomAmount - 1.0f);
             }
         }
     }

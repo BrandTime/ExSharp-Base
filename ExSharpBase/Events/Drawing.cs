@@ -28,8 +28,6 @@ namespace ExSharpBase.Events
                 if (DrawingProperties["DrawRange"] == true)
                 {
                     LocalPlayer.DrawAttackRange(Color.Cyan, 2.5f);
-
-                    LocalPlayer.DrawAllSpellRange(Color.OrangeRed);
                 }
             }
         }
